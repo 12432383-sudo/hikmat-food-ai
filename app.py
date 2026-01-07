@@ -1,69 +1,86 @@
 import streamlit as st
-import requests
+from food_ai_ml import predict_health
 import joblib
 
-# Load ML model
+# Load ML model (already trained)
 model = joblib.load("food_ai_model.pkl")
 
-LABELS = {
-    0: "Healthy ✅",
-    1: "Moderate ⚠️",
-    2: "Unhealthy ❌"
-}
+# ---------- HUMAN EXPLANATION FUNCTION ----------
+def explain_like_human(sugar, salt, sat_fat, verdict):
+    explanation = ""
 
-# Fetch product
-def get_product(barcode):
-    url = f"https://world.openfoodfacts.org/api/v0/product/{barcode}.json"
-    try:
-        r = requests.get(url, timeout=10)
-        data = r.json()
-        if data.get("status") != 1:
-            return None
-        return data["product"]
-    except:
-        return None
+    if verdict == "Unhealthy":
+        explanation += "This product is considered unhealthy mainly because of its nutritional balance. "
 
-# Extract features
-def extract_features(product):
-    nutriments = product.get("nutriments", {})
+        if sugar > 10:
+            explanation += f"It contains a high amount of sugar ({sugar}g per 100g), which can increase the risk of weight gain and diabetes if consumed often. "
 
-    sugar = nutriments.get("sugars_100g", 0)
-    salt = nutriments.get("salt_100g", 0)
-    sat_fat = nutriments.get("saturated-fat_100g", 0)
+        if salt > 1:
+            explanation += f"The salt level is quite high ({salt}g per 100g), which may negatively affect blood pressure. "
 
-    ingredients = (
-        product.get("ingredients_text", "")
-        + product.get("ingredients_text_en", "")
-    ).lower()
+        if sat_fat > 5:
+            explanation += f"It also has a high level of saturated fat ({sat_fat}g per 100g), which is not good for heart health. "
 
-    palm_oil = 1 if "palm oil" in ingredients else 0
+        explanation += "Eating this occasionally is okay, but it should not be a daily habit."
 
-    return [[sugar, salt, sat_fat, palm_oil]]
+        suggestion = (
+            "Try choosing foods with less sugar, lower salt, and healthier fats. "
+            "Examples include plain yogurt, nuts, fruits, oats, or homemade snacks."
+        )
 
-# ---------------- UI ----------------
+    else:
+        explanation += "This product has a relatively balanced nutritional profile. "
 
+        if sugar <= 10:
+            explanation += "Its sugar content is moderate. "
+
+        if salt <= 1:
+            explanation += "The salt level is within a safe range. "
+
+        if sat_fat <= 5:
+            explanation += "Saturated fat is not excessive. "
+
+        explanation += "This makes it a reasonable choice when eaten in moderation."
+
+        suggestion = (
+            "You can include this food in a balanced diet. "
+            "Still, variety is important, so mix it with fresh and whole foods."
+        )
+
+    return explanation, suggestion
+
+
+# ---------- STREAMLIT UI ----------
 st.set_page_config(page_title="Hikmat Food AI", page_icon="🥗")
 
 st.title("🥗 Hikmat Food AI")
-st.write("Scan or enter a barcode to check how healthy a product is.")
+st.write("Scan or enter a food barcode to understand how healthy it is — explained like a human.")
 
-barcode = st.text_input("📦 Enter barcode")
+barcode = st.text_input("📦 Enter product barcode (numbers only):")
 
-if st.button("Analyze"):
-    product = get_product(barcode)
+if barcode:
+    # Demo nutrition values (later replaced by real API data)
+    sugar = st.number_input("Sugar (g per 100g)", value=10.0)
+    salt = st.number_input("Salt (g per 100g)", value=0.5)
+    sat_fat = st.number_input("Saturated fat (g per 100g)", value=3.0)
 
-    if not product:
-        st.error("❌ Product not found")
-    else:
-        name = product.get("product_name", "Unknown product")
-        features = extract_features(product)
-        prediction = model.predict(features)[0]
+    if st.button("Analyze Food"):
+        verdict = predict_health(sugar, salt, sat_fat)
 
-        st.subheader(f"📦 {name}")
-        st.success(f"🤖 AI Verdict: {LABELS[prediction]}")
+        st.subheader("🤖 AI Verdict")
+        if verdict == "Unhealthy":
+            st.error("Unhealthy ❌")
+        else:
+            st.success("Healthy ✅")
 
-        st.write("### 🔬 Nutrition per 100g")
-        nutriments = product.get("nutriments", {})
-        st.write("Sugar:", nutriments.get("sugars_100g", "N/A"))
-        st.write("Salt:", nutriments.get("salt_100g", "N/A"))
-        st.write("Saturated fat:", nutriments.get("saturated-fat_100g", "N/A"))
+        explanation, suggestion = explain_like_human(
+            sugar, salt, sat_fat, verdict
+        )
+
+        st.subheader("🧠 AI Explanation")
+        st.write(explanation)
+
+        st.subheader("🥦 Healthier Advice")
+        st.info(suggestion)
+
+        st.caption("⚠️ This AI provides educational insights, not medical advice.")

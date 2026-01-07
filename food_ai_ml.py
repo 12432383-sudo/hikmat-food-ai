@@ -1,71 +1,51 @@
-import requests
 import joblib
+import numpy as np
 
-# -----------------------------------
 # Load trained ML model
-# -----------------------------------
 model = joblib.load("food_ai_model.pkl")
 
-LABELS = {
-    0: "Healthy ✅",
-    1: "Moderate ⚠️",
-    2: "Unhealthy ❌"
-}
-
-# -----------------------------------
-# Fetch product from OpenFoodFacts
-# -----------------------------------
-def get_product(barcode):
-    url = f"https://world.openfoodfacts.org/api/v0/product/{barcode}.json"
-    try:
-        r = requests.get(url, timeout=10)
-        data = r.json()
-        if data.get("status") != 1:
-            return None
-        return data["product"]
-    except Exception as e:
-        print("❌ API error:", e)
-        return None
-
-# -----------------------------------
-# Extract ML features
-# -----------------------------------
-def extract_features(product):
-    nutriments = product.get("nutriments", {})
-
-    sugar = nutriments.get("sugars_100g", 0)
-    salt = nutriments.get("salt_100g", 0)
-    sat_fat = nutriments.get("saturated-fat_100g", 0)
-
-    ingredients = (
-        product.get("ingredients_text", "")
-        + product.get("ingredients_text_en", "")
-    ).lower()
-
-    palm_oil = 1 if "palm oil" in ingredients else 0
-
-    return [[sugar, salt, sat_fat, palm_oil]]
-
-# -----------------------------------
-# Main App
-# -----------------------------------
-def main():
-    print("🥗 Welcome to Hikmat Food AI (ML Edition)")
-    barcode = input("Enter the product barcode: ").strip()
-
-    product = get_product(barcode)
-    if not product:
-        print("❌ Product not found")
-        return
-
-    name = product.get("product_name", "Unknown product")
-
-    features = extract_features(product)
+# --------------------------------------------------
+# ML Prediction (FIXED: 4 FEATURES)
+# --------------------------------------------------
+def predict_health(sugar, salt, sat_fat, calories):
+    features = np.array([[sugar, salt, sat_fat, calories]])
     prediction = model.predict(features)[0]
+    return "Healthy" if prediction == 1 else "Unhealthy"
 
-    print("\n📦 Product:", name)
-    print("🤖 AI Verdict:", LABELS[prediction])
 
-# -----------------------------------
-if __name__ == "__main__":
-    main()
+# --------------------------------------------------
+# Human-like Explanation Engine
+# --------------------------------------------------
+def explain_verdict(sugar, salt, sat_fat, calories, verdict):
+    reasons = []
+    suggestions = []
+
+    if sugar > 10:
+        reasons.append("it contains a high amount of sugar, which may cause energy crashes and weight gain")
+        suggestions.append("choose foods with natural sugars like fruits")
+
+    if sat_fat > 5:
+        reasons.append("it is high in saturated fat, which can increase heart disease risk")
+        suggestions.append("prefer foods with healthy fats like nuts, avocado, or olive oil")
+
+    if salt > 1.2:
+        reasons.append("it has a lot of salt, which may increase blood pressure")
+        suggestions.append("look for low-salt or lightly seasoned alternatives")
+
+    if calories > 400:
+        reasons.append("it is calorie-dense, so frequent consumption may lead to weight gain")
+        suggestions.append("consume smaller portions or lighter snacks")
+
+    if verdict == "Unhealthy" and reasons:
+        explanation = (
+            "This product is considered unhealthy because "
+            + ", and ".join(reasons)
+            + "."
+        )
+    else:
+        explanation = (
+            "This product appears relatively healthy. Still, balanced consumption is recommended."
+        )
+
+    suggestions = list(set(suggestions))  # remove duplicates
+    return explanation, suggestions
