@@ -3,32 +3,24 @@ def explain_like_human(verdict, sugar, salt, sat_fat, calories):
     advice = []
 
     if sugar > 10:
-        reasons.append(
-            f"High sugar content ({sugar}g per 100g) can increase the risk of diabetes and weight gain."
-        )
-        advice.append("Choose products with less than 5g sugar per 100g.")
+        reasons.append(f"High sugar ({sugar}g). Can increase diabetes and weight gain risk.")
+        advice.append("Choose foods with under 5g sugar per 100g.")
 
     if salt > 1.2:
-        reasons.append(
-            f"Salt level is high ({salt}g per 100g), which may raise blood pressure."
-        )
-        advice.append("Prefer low-salt or no-added-salt options.")
+        reasons.append(f"High salt ({salt}g). This may raise blood pressure.")
+        advice.append("Prefer low-salt or no-added-salt foods.")
 
     if sat_fat > 5:
-        reasons.append(
-            f"Saturated fat is high ({sat_fat}g per 100g), which is linked to heart disease."
-        )
-        advice.append("Look for foods with healthier fats like olive oil or nuts.")
+        reasons.append(f"High saturated fat ({sat_fat}g). Linked to heart disease.")
+        advice.append("Look for unsaturated fats like olive oil.")
 
     if calories > 400:
-        reasons.append(
-            f"This is a high-calorie product ({calories} kcal per 100g)."
-        )
-        advice.append("Consume occasionally and balance with fresh foods.")
+        reasons.append(f"High calorie density ({calories} kcal).")
+        advice.append("Eat smaller portions or choose lighter alternatives.")
 
     if verdict == "Unhealthy":
-        tone = "⚠️ From a health perspective, this product should be consumed sparingly."
+        tone = "⚠️ This product may not support good long-term health."
     else:
-        tone = "✅ This product is generally a reasonable choice when eaten in moderation."
+        tone = "✅ This product is a reasonable choice when consumed in moderation."
 
     return tone, reasons, advice
