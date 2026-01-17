@@ -108,3 +108,4 @@ if len(st.session_state["history"]) > 0:
     st.dataframe(pd.DataFrame(st.session_state["history"]))
 else:
     st.write("No scans yet.")
+Update app.py with latest scanner + palm oil + explanation features
