@@ -1,26 +1,32 @@
-def explain_like_human(verdict, sugar, salt, sat_fat, calories):
-    reasons = []
-    advice = []
+import streamlit as st
+from openai import OpenAI
 
-    if sugar > 10:
-        reasons.append(f"High sugar ({sugar}g). Can increase diabetes and weight gain risk.")
-        advice.append("Choose foods with under 5g sugar per 100g.")
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
-    if salt > 1.2:
-        reasons.append(f"High salt ({salt}g). This may raise blood pressure.")
-        advice.append("Prefer low-salt or no-added-salt foods.")
+def explain_decision(sugar, salt, sat_fat, calories, label):
+    health_status = "unhealthy" if label == 1 else "healthy"
 
-    if sat_fat > 5:
-        reasons.append(f"High saturated fat ({sat_fat}g). Linked to heart disease.")
-        advice.append("Look for unsaturated fats like olive oil.")
+    prompt = f"""
+You are a nutrition expert AI. Explain like a human.
 
-    if calories > 400:
-        reasons.append(f"High calorie density ({calories} kcal).")
-        advice.append("Eat smaller portions or choose lighter alternatives.")
+Food nutritional values:
+- Sugar: {sugar} g
+- Salt: {salt} g
+- Saturated Fat: {sat_fat} g
+- Calories: {calories}
 
-    if verdict == "Unhealthy":
-        tone = "⚠️ This product may not support good long-term health."
-    else:
-        tone = "✅ This product is a reasonable choice when consumed in moderation."
+The machine-learning model classified this food as **{health_status}**.
 
-    return tone, reasons, advice
+Respond with:
+1. A clear explanation WHY the food is {health_status}.
+2. What health risks it may cause.
+3. What better alternative foods the user can choose.
+4. If unhealthy, give a healthier version of this food.
+"""
+
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}]
+    )
+
+    return response.choices[0].message["content"]
