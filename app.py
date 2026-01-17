@@ -1,94 +1,110 @@
 import streamlit as st
-import requests
-from food_ai_ml import predict_health
-from health_insights import explain_prediction
+import json
+import pandas as pd
+import base64
+from food_ai_ml import analyze_food
+import streamlit.components.v1 as components
 
-st.set_page_config(page_title="Hikmat Food AI", page_icon="🥗", layout="centered")
+st.set_page_config(page_title="Hikmat Food AI", layout="wide")
 
 st.title("🥗 Hikmat Food AI")
-st.write("Scan or enter a barcode to understand how healthy a product really is.")
+st.write("Scan a barcode or enter it manually. The AI will analyze nutrition, packaging risks, and suggest healthier alternatives.")
 
-# -------------------------------------------------------
-# Fetch product from OpenFoodFacts
-# -------------------------------------------------------
-def fetch_product(barcode):
-    try:
-        url = f"https://world.openfoodfacts.org/api/v0/product/{barcode}.json"
-        res = requests.get(url, timeout=10).json()
+# -----------------------
+# SESSION HISTORY STORAGE
+# -----------------------
+if "history" not in st.session_state:
+    st.session_state["history"] = []
 
-        if res.get("status") != 1:
-            return None
-        return res["product"]
-    except Exception as e:
-        st.error(f"API error: {e}")
-        return None
+# -----------------------
+# REAL-TIME BARCODE SCANNER (JS + QuaggaJS)
+# -----------------------
 
-# -------------------------------------------------------
-# Palm oil detection
-# -------------------------------------------------------
-def detect_palm_oil(ingredients_text):
-    if not ingredients_text:
-        return 0
+html_code = """
+<!DOCTYPE html>
+<html>
+  <body style="margin:0; padding:0; text-align:center;">
 
-    text = ingredients_text.lower()
-    triggers = ["palm oil", "huile de palme", "palmiste", "palmitate"]
+    <video id="video" width="350" height="250" autoplay style="border-radius: 10px;"></video>
+    <p id="result" style="font-size:20px;"></p>
 
-    return 1 if any(word in text for word in triggers) else 0
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
 
-# -------------------------------------------------------
-# UI
-# -------------------------------------------------------
-barcode = st.text_input("Enter product barcode")
+    <script>
+      function startScanner(){
+        Quagga.init({
+          inputStream: {
+            name: "Live",
+            type: "LiveStream",
+            target: document.querySelector('#video'),
+          },
+          decoder: { readers: ["ean_reader", "ean_13_reader", "upc_reader", "code_128_reader"] }
+        }, function(err){
+          if(err){ console.log(err); return }
+          Quagga.start();
+        });
 
-if st.button("Analyze Food"):
-    product = fetch_product(barcode)
+        Quagga.onDetected(function(data){
+          const code = data.codeResult.code;
+          document.getElementById("result").innerHTML = "Scanned: " + code;
 
-    if not product:
-        st.error("❌ Product not found in OpenFoodFacts")
-    else:
-        name = product.get("product_name", "Unknown")
-        st.subheader(f"📦 {name}")
+          // Send barcode to Streamlit
+          window.parent.postMessage({barcode: code}, "*");
+        });
+      }
 
-        # Extract nutrition
-        nutriments = product.get("nutriments", {})
-        sugar = nutriments.get("sugars_100g", 0)
-        salt = nutriments.get("salt_100g", 0)
-        sat_fat = nutriments.get("saturated-fat_100g", 0)
-        ingredients = product.get("ingredients_text", "")
+      startScanner();
+    </script>
+  </body>
+</html>
+"""
 
-        # Palm oil detection
-        palm_oil = detect_palm_oil(ingredients)
+components.html(html_code, height=350)
 
-        st.write("### 🔬 Nutrition (per 100g)")
-        st.write(f"- Sugar: **{sugar} g**")
-        st.write(f"- Salt: **{salt} g**")
-        st.write(f"- Saturated Fat: **{sat_fat} g**")
-        st.write(f"- Palm Oil: **{'Yes' if palm_oil else 'No'}**")
+barcode = st.text_input("Barcode (auto-filled if scanned)")
 
-        # ML Prediction
-        verdict = predict_health(sugar, salt, sat_fat, palm_oil)
+# -----------------------
+# USER INPUTS
+# -----------------------
+st.subheader("Nutrition Info")
+sugar = st.number_input("Sugar (g)", min_value=0.0, max_value=200.0, step=0.1)
+salt = st.number_input("Salt (g)", min_value=0.0, max_value=200.0, step=0.1)
+fat = st.number_input("Saturated Fat (g)", min_value=0.0, max_value=200.0, step=0.1)
 
-        # -------------------------------------------------------
-        # AI Verdict (fixed clean version)
-        # -------------------------------------------------------
-        st.write("### 🤖 AI Verdict")
+# -----------------------
+# PROCESS ANALYSIS
+# -----------------------
+if st.button("🔍 Analyze Food"):
+    verdict, explanation, suggestions, plastic_warning = analyze_food(
+        barcode, sugar, salt, fat
+    )
 
-        if verdict == "healthy":
-            st.success("Healthy ✔")
-        elif verdict == "moderate":
-            st.warning("Moderate ⚠️")
-        elif verdict == "unhealthy":
-            st.error("Unhealthy ❌")
-        elif verdict == "very unhealthy":
-            st.error("Very Unhealthy ❌🔥")
-        else:
-            st.error(verdict)
+    st.subheader("AI Verdict")
+    st.info(verdict)
 
-        # Human explanations
-        reasons, advice = explain_prediction(verdict, sugar, salt, sat_fat, palm_oil)
+    st.subheader("Explanation")
+    st.write(explanation)
 
-        st.write("### 📌 Why this verdict?")
-        st.write(reasons)
+    st.subheader("Better Choices / Healthier Alternatives")
+    st.write(suggestions)
 
-        st.write("### ⭐ Better Choices")
-        st.write(advice)
+    st.subheader("Packaging & Plastic Safety Warning")
+    st.warning(plastic_warning)
+
+    # Save history
+    st.session_state["history"].append({
+        "barcode": barcode,
+        "sugar": sugar,
+        "salt": salt,
+        "fat": fat,
+        "verdict": verdict
+    })
+
+# -----------------------
+# HISTORY SECTION
+# -----------------------
+st.subheader("📜 Scan History")
+if len(st.session_state["history"]) > 0:
+    st.dataframe(pd.DataFrame(st.session_state["history"]))
+else:
+    st.write("No scans yet.")
