@@ -1,19 +1,22 @@
-import pickle
+import joblib
 import numpy as np
 
-# Load the trained model
-model = pickle.load(open("food_ai_model.pkl", "rb"))
+# ---------------------------
+# LOAD MODEL (JOBLIB ONLY)
+# ---------------------------
+model = joblib.load("food_ai_model.pkl")
 
 def analyze_food(barcode, sugar, salt, fat):
-
-    # Create score
+    # ---------------------------
+    # FEATURE ENGINEERING
+    # ---------------------------
     score = sugar + salt + fat
     features = np.array([[sugar, salt, fat, score]])
 
     prediction = model.predict(features)[0]
 
     # ---------------------------
-    # HEALTH VERDICT
+    # AI VERDICT
     # ---------------------------
     if prediction == 0:
         verdict = "❌ Unhealthy"
@@ -26,11 +29,10 @@ def analyze_food(barcode, sugar, salt, fat):
     # HUMAN EXPLANATION
     # ---------------------------
     explanation = (
-        f"**Nutrition breakdown:**\n"
-        f"- Sugar: {sugar} g\n"
-        f"- Salt: {salt} g\n"
-        f"- Saturated Fat: {fat} g\n\n"
-        "Your food was analyzed using both nutrition thresholds and AI scoring."
+        f"This food contains **{sugar}g sugar**, **{salt}g salt**, "
+        f"and **{fat}g saturated fat per 100g**.\n\n"
+        "The AI combined these values using nutrition science and "
+        "machine-learning patterns learned from real food data."
     )
 
     # ---------------------------
@@ -38,28 +40,30 @@ def analyze_food(barcode, sugar, salt, fat):
     # ---------------------------
     if prediction == 0:
         suggestions = (
-            "• Choose food with less sugar and saturated fat.\n"
-            "• Try nuts, yogurt, fruits, or unsweetened alternatives.\n"
-            "• Look for labels like 'Low Sodium' or 'No Added Sugar'."
+            "• Reduce sugar and saturated fat intake.\n"
+            "• Choose whole foods like fruits, yogurt, nuts.\n"
+            "• Avoid ultra-processed snacks and sugary drinks."
         )
     elif prediction == 1:
         suggestions = (
-            "• This food is okay sometimes.\n"
-            "• Compare brands and choose the one with lower salt.\n"
-            "• Try balancing it with healthy foods during the day."
+            "• Acceptable occasionally.\n"
+            "• Balance your day with vegetables and water.\n"
+            "• Prefer lower-salt alternatives."
         )
     else:
         suggestions = (
-            "• Good choice! Keep balancing with fruits, vegetables, and water.\n"
+            "• Excellent choice!\n"
+            "• Keep combining with fresh, unprocessed foods."
         )
 
     # ---------------------------
-    # PLASTIC PACKAGING WARNING
+    # PLASTIC WARNING
     # ---------------------------
     plastic_warning = (
-        "Foods stored in plastic may contain **BPA, phthalates, and microplastics**.\n"
-        "These can affect hormones, fertility, and increase cancer risks.\n"
-        "Avoid heating plastic containers and choose glass or BPA-free packaging when possible."
+        "⚠️ **Plastic Risk**\n\n"
+        "Food packaging made of plastic may release BPA and microplastics, "
+        "especially when heated.\n"
+        "Prefer glass or paper packaging when possible."
     )
 
     return verdict, explanation, suggestions, plastic_warning
