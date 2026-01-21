@@ -2,12 +2,9 @@ import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 import joblib
 
-# -------------------------------
-# TRAINING DATA (simple but solid)
-# -------------------------------
-# Each row = [sugar, salt, saturated_fat, score]
-# class = 0 (unhealthy), 1 (moderate), 2 (healthy)
-
+# ---------------------------
+# TRAINING DATA
+# ---------------------------
 data = [
     [20, 2.0, 10, 32, 0],
     [15, 1.2, 8, 24, 0],
@@ -21,20 +18,26 @@ data = [
     [7, 0.2, 2, 9, 2],
 ]
 
-df = pd.DataFrame(data, columns=["sugar", "salt", "fat", "score", "label"])
+df = pd.DataFrame(
+    data,
+    columns=["sugar", "salt", "fat", "score", "label"]
+)
 
 X = df[["sugar", "salt", "fat", "score"]]
 y = df["label"]
 
-# -------------------------------
+# ---------------------------
 # TRAIN MODEL
-# -------------------------------
-model = RandomForestClassifier(n_estimators=200, random_state=42)
+# ---------------------------
+model = RandomForestClassifier(
+    n_estimators=200,
+    random_state=42
+)
 model.fit(X, y)
 
-# -------------------------------
+# ---------------------------
 # SAVE MODEL
-# -------------------------------
+# ---------------------------
 joblib.dump(model, "food_ai_model.pkl")
 
-print("✅ New model trained and saved as food_ai_model.pkl")
+print("✅ Model retrained and saved correctly")

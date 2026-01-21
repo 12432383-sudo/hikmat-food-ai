@@ -3,7 +3,6 @@ import json
 import pandas as pd
 import base64
 from analyze import analyze_food
-
 import streamlit.components.v1 as components
 
 st.set_page_config(page_title="Hikmat Food AI", layout="wide")
